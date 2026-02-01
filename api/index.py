@@ -2,7 +2,7 @@ app.add_middleware(>
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["POST"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -12,12 +12,15 @@ async def analytics(request: Request):
     regions = data["regions"]
     threshold_ms = data["threshold_ms"]
 
-    # Mock data (replace with real file later)
+    # MOCK TELEMETRY DATA - NO FILE NEEDED
     telemetry = [
         {"region": "apac", "latency_ms": 120, "uptime": 1.0},
         {"region": "apac", "latency_ms": 150, "uptime": 0.99},
+        {"region": "apac", "latency_ms": 160, "uptime": 0.98},
         {"region": "amer", "latency_ms": 200, "uptime": 0.98},
         {"region": "amer", "latency_ms": 180, "uptime": 0.97},
+        {"region": "amer", "latency_ms": 220, "uptime": 0.96},
+        {"region": "amer", "latency_ms": 175, "uptime": 0.99},
     ]
 
     results = {}
