@@ -1,49 +1,56 @@
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-import numpy as np
 import json
 
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.post("/")
-async def analytics(request: Request):
-    body = await request.body()
-    data = json.loads(body)
-    regions = data["regions"]
-    threshold = data["threshold_ms"]
-    
-    # Mock telemetry data
-    telemetry = [
-        {"region": "apac", "latency_ms": 120, "uptime": 1.0},
-        {"region": "apac", "latency_ms": 150, "uptime": 0.99},
-        {"region": "apac", "latency_ms": 160, "uptime": 0.98},
-        {"region": "amer", "latency_ms": 200, "uptime": 0.98},
-        {"region": "amer", "latency_ms": 180, "uptime": 0.97},
-        {"region": "amer", "latency_ms": 220, "uptime": 0.96},
-    ]
-    
-    result = {}
-    for region in regions:
-        region_data = [r for r in telemetry if r["region"] == region]
-        if not region_data:
-            result[region] = {"error": "No data"}
-            continue
-            
-        latencies = np.array([r["latency_ms"] for r in region_data])
-        uptimes = [r["uptime"] for r in region_data]
+def handler(request):
+    try:
+        body = request['body']
+        data = json.loads(body)
+        regions = data["regions"]
+        threshold = data["threshold_ms"]
         
-        result[region] = {
-            "avg_latency": float(np.mean(latencies)),
-            "p95_latency": float(np.percentile(latencies, 95)),
-            "avg_uptime": float(np.mean(uptimes)),
-            "breaches": int(np.sum(latencies > threshold))
+        # Mock data
+        telemetry = [
+            {"region": "apac", "latency_ms": 120, "uptime": 1.0},
+            {"region": "apac", "latency_ms": 150, "uptime": 0.99},
+            {"region": "apac", "latency_ms": 160, "uptime": 0.98},
+            {"region": "amer", "latency_ms": 200, "uptime": 0.98},
+            {"region": "amer", "latency_ms": 180, "uptime": 0.97},
+            {"region": "amer", "latency_ms": 220, "uptime": 0.96},
+        ]
+        
+        result = {}
+        for region in regions:
+            region_data = [r for r in telemetry if r["region"] == region]
+            if not region_data:
+                result[region] = {"error": "No data"}
+                continue
+                
+            latencies = [r["latency_ms"] for r in region_data]
+            uptimes = [r["uptime"] for r in region_data]
+            
+            # Pure Python stats (no numpy)
+            avg_latency = sum(latencies) / len(latencies)
+            avg_uptime = sum(uptimes) / len(uptimes)
+            p95_latency = sorted(latencies)[int(0.95 * len(latencies))]
+            breaches = sum(1 for x in latencies if x > threshold)
+            
+            result[region] = {
+                "avg_latency": round(float(avg_latency), 2),
+                "p95_latency": round(float(p95_latency), 2),
+                "avg_uptime": round(float(avg_uptime), 3),
+                "breaches": int(breaches)
+            }
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "*"
+            },
+            "body": json.dumps(result)
         }
-    return result
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": str(e)})
+        }
