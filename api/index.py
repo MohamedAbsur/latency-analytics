@@ -1,7 +1,9 @@
 import json
+import Vercel
 
-def main(request):
-    body = request.get('body', '{}')
+@Vercel.api()
+def index(request):
+    body = request.body
     data = json.loads(body) if isinstance(body, str) else body
     regions = data.get('regions', [])
     threshold = data.get('threshold_ms', 177)
@@ -28,12 +30,4 @@ def main(request):
                 'breaches': sum(1 for x in latencies if x > threshold)
             }
     
-    return {
-        'statusCode': 200,
-        'headers': {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST,OPTIONS'
-        },
-        'body': json.dumps(result)
-    }
+    return Vercel.json(result)
