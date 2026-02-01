@@ -2,12 +2,17 @@ import json
 
 def handler(request):
     try:
-        body = request['body']
-        data = json.loads(body)
-        regions = data["regions"]
-        threshold = data["threshold_ms"]
+        # Parse JSON body
+        body = request.get('body', '{}')
+        if isinstance(body, str):
+            data = json.loads(body)
+        else:
+            data = body
         
-        # Mock data
+        regions = data.get("regions", [])
+        threshold = data.get("threshold_ms", 0)
+        
+        # Mock telemetry data (exactly what assignment expects)
         telemetry = [
             {"region": "apac", "latency_ms": 120, "uptime": 1.0},
             {"region": "apac", "latency_ms": 150, "uptime": 0.99},
@@ -23,15 +28,16 @@ def handler(request):
             if not region_data:
                 result[region] = {"error": "No data"}
                 continue
-                
+            
             latencies = [r["latency_ms"] for r in region_data]
             uptimes = [r["uptime"] for r in region_data]
             
-            # Pure Python stats (no numpy)
+            # Pure Python calculations (no numpy)
             avg_latency = sum(latencies) / len(latencies)
+            p95_idx = int(0.95 * len(latencies))
+            p95_latency = sorted(latencies)[p95_idx]
             avg_uptime = sum(uptimes) / len(uptimes)
-            p95_latency = sorted(latencies)[int(0.95 * len(latencies))]
-            breaches = sum(1 for x in latencies if x > threshold)
+            breaches = sum(1 for lat in latencies if lat > threshold)
             
             result[region] = {
                 "avg_latency": round(float(avg_latency), 2),
@@ -39,6 +45,7 @@ def handler(request):
                 "avg_uptime": round(float(avg_uptime), 3),
                 "breaches": int(breaches)
             }
+            
         return {
             "statusCode": 200,
             "headers": {
